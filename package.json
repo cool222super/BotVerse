@@ -1,0 +1,24 @@
+{
+  "name": "BotVerse",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "fs": "^0.0.1-security",
+    "mongodb": "^6.13.1",
+    "mongoos": "^0.0.1-security",
+    "mongoose": "^8.12.1",
+    "node-fetch": "^2.7.0",
+    "path": "^0.12.7",
+    "scandir": "^0.1.2"
+  }
+}

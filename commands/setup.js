@@ -209,7 +209,7 @@ module.exports = {
             const titleInput = new TextInputBuilder()
                 .setCustomId('release_embed_title')
                 .setLabel('Embed Title')
-                .setPlaceholder('Example: Server Now Open to Everyone!')
+                .setPlaceholder('Example: The session has now been released.')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
                 

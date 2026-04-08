@@ -1,8 +1,4 @@
 
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
-
-// Made by Supercoolsbro :D
-
 
 const {
     SlashCommandBuilder,
@@ -175,7 +171,7 @@ module.exports = {
             const titleInput = new TextInputBuilder()
                 .setCustomId('ea_embed_title')
                 .setLabel('Embed Title')
-                .setPlaceholder('Example: Early Access Now Available!')
+                .setPlaceholder('Example: Early Access has been released!')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
                 
@@ -209,7 +205,7 @@ module.exports = {
             const titleInput = new TextInputBuilder()
                 .setCustomId('release_embed_title')
                 .setLabel('Embed Title')
-                .setPlaceholder('Example: The session has now been released.')
+                .setPlaceholder('Example: The session has been released!')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
                 
@@ -241,7 +237,7 @@ module.exports = {
             const titleInput = new TextInputBuilder()
                 .setCustomId('reinvites_embed_title')
                 .setLabel('Embed Title')
-                .setPlaceholder('Example: Server Reinvites Available!')
+                .setPlaceholder('Example: Reinvites has been released!')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
                 
@@ -273,7 +269,7 @@ module.exports = {
             const titleInput = new TextInputBuilder()
                 .setCustomId('over_embed_title')
                 .setLabel('Embed Title')
-                .setPlaceholder('Example: Session is now over!')
+                .setPlaceholder('Example: The Session is now over!')
                 .setStyle(TextInputStyle.Short)
                 .setRequired(true);
                 
@@ -309,398 +305,102 @@ module.exports = {
         try {
             const serverId = interaction.guild.id;
             const modalId = interaction.customId;
-            console.log(`Processing modal submission: ${modalId}`);
-           
+
             let modalType = '';
             if (modalId.includes('staff')) modalType = 'staff';
             else if (modalId.includes('civilian')) modalType = 'civilian';
-            else if (modalId.includes('leo')) modalType = 'leo';
             else if (modalId.includes('vehicle_limit')) modalType = 'vehicle_limit';
+            else if (modalId.includes('leo')) modalType = 'leo';
             else if (modalId.includes('startup_embed')) modalType = 'startup_embed';
             else if (modalId.includes('early_access')) modalType = 'early_access';
             else if (modalId.includes('release')) modalType = 'release';
             else if (modalId.includes('reinvites')) modalType = 'reinvites';
             else if (modalId.includes('over')) modalType = 'over';
-            
-            console.log(`Detected modal type: ${modalType}`);
-            
-          
-            const dataDir = path.join(process.cwd(), 'data', 'serverConfig');
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-            }
 
-          
-            const configFilePath = path.join(dataDir, `${serverId}.json`);
-            console.log(`Config file path: ${configFilePath}`);
+            const configDir = path.join(process.cwd(), 'data', 'serverConfig');
+            if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
 
-            let existingConfig = {};
+            const configPath = path.join(configDir, `${serverId}.json`);
+            let config = {};
 
-          
-            if (fs.existsSync(configFilePath)) {
-                const fileContent = fs.readFileSync(configFilePath, 'utf8');
-                console.log(`The Existing config file content is ${fileContent}`);
+            if (fs.existsSync(configPath)) {
                 try {
-                    existingConfig = JSON.parse(fileContent);
+                    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
                 } catch (e) {
-                    console.error(`Error parsing JSON for server ${serverId}:`, e);
-                  
+                    console.error(`Failed to parse config for ${serverId}:`, e);
                 }
-            } else {
-                console.log(`No existing config file found for server ${serverId}`);
             }
 
-            let successMessage = '';
-            let alreadyWritten = false;
+            let msg = '';
 
-         
             if (modalType === 'staff') {
-                const roleId = interaction.fields.getTextInputValue('role_id');
-                existingConfig.staffRole = roleId;
-                successMessage = 'Staff role has been set successfully! This role can now use all startup commands.';
-            } 
-            else if (modalType === 'civilian') {
-                const roleId = interaction.fields.getTextInputValue('role_id');
-                existingConfig.civilianRole = roleId;
-                successMessage = 'Civilian role has been set successfully! This role can now use basic commands like profile, register, etc.';
+                config.staffRole = interaction.fields.getTextInputValue('role_id');
+                msg = 'Staff role updated.';
             }
-            else if (modalType === 'leo') {
-                console.log('Processing LEO roles form submission');
-                
-                const leoRoles = interaction.fields.getTextInputValue('leo_role_ids');
-                console.log(`LEO roles: "${leoRoles}"`);
-                
-                
-                const leoRoleIds = leoRoles.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                
-             
-                existingConfig.leoRoles = leoRoleIds;
-                
-              
-                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
-                
-                
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
-                    
-                   
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Law Enforcement roles have been configured successfully!';
+            else if (modalType === 'civilian') {
+                config.civilianRole = interaction.fields.getTextInputValue('role_id');
+                msg = 'Civilian role set.';
             }
             else if (modalType === 'vehicle_limit') {
-                console.log('Processing vehicle limit form submission');
-                
-                const limitValue = interaction.fields.getTextInputValue('limit_value');
-                console.log(`The Raw limit value from the form is "${limitValue}"`);
-                
-                const limit = parseInt(limitValue, 10);
-                console.log(`Parsed limit: ${limit}, type: ${typeof limit}`);
-                
+                const limit = parseInt(interaction.fields.getTextInputValue('limit_value'), 10);
                 if (isNaN(limit) || limit < 1) {
-                    console.log('Invalid limit value detected');
-                    await interaction.reply({
-                        content: 'Please enter a valid number greater than 0 for the vehicle limit.',
-                        ephemeral: true
-                    });
+                    await interaction.reply({ content: 'You must add a number thats 1 or higher. ', ephemeral: true });
                     return;
                 }
-                
-               
-                existingConfig.vehicleLimit = limit;
-                console.log(`Set vehicleLimit in config object: ${existingConfig.vehicleLimit}, type: ${typeof existingConfig.vehicleLimit}`);
-                
-               
-                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
-                
-                
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
-                    
-                   
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                        
-                        try {
-                            const parsedConfig = JSON.parse(verifyData);
-                            console.log(`Parsed config from the file - the vehicleLimit is ${parsedConfig.vehicleLimit}, type: ${typeof parsedConfig.vehicleLimit}`);
-                        } catch (e) {
-                            console.error('Error parsing verification data:', e);
-                        }
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                
-                alreadyWritten = true;
-                
-                successMessage = `Vehicle registration limit has been set to ${limit} vehicles per user.`;
+                config.vehicleLimit = limit;
+                msg = `The Vehicle limit is now ${limit}.`;
+            }
+            else if (modalType === 'leo') {
+                const raw = interaction.fields.getTextInputValue('leo_role_ids');
+                config.leoRoles = raw.split(',').map(r => r.trim()).filter(r => r);
+                msg = 'The LEO roles has been successfully been saved.';
             }
             else if (modalType === 'startup_embed') {
-                console.log('Processing startup embed form submission');
-                
-                const embedTitle = interaction.fields.getTextInputValue('embed_title');
-                const embedDescription = interaction.fields.getTextInputValue('embed_description');
-                const embedImage = interaction.fields.getTextInputValue('embed_image') || null;
-                
-                console.log(`Embed title: "${embedTitle}"`);
-                console.log(`Embed description: "${embedDescription}"`);
-                console.log(`Embed image URL: "${embedImage}"`);
-                
-            
-                if (!existingConfig.startupEmbed) {
-                    existingConfig.startupEmbed = {};
-                }
-                
-                existingConfig.startupEmbed.title = embedTitle;
-                existingConfig.startupEmbed.description = embedDescription;
-                existingConfig.startupEmbed.imageUrl = embedImage;
-                
-               
-                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
-                
-                
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
-                    
-                  
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Startup embed has been configured successfully!';
+                if (!config.startupEmbed) config.startupEmbed = {};
+                config.startupEmbed.title = interaction.fields.getTextInputValue('embed_title');
+                config.startupEmbed.description = interaction.fields.getTextInputValue('embed_description');
+                config.startupEmbed.imageUrl = interaction.fields.getTextInputValue('embed_image') || null;
+                msg = 'The Startup embed has been updated.';
             }
             else if (modalType === 'early_access') {
-                console.log('Processing early access form submission');
-                
-                const pingRoles = interaction.fields.getTextInputValue('ea_ping_roles');
-                const allowedRoles = interaction.fields.getTextInputValue('ea_allowed_roles');
-                const embedTitle = interaction.fields.getTextInputValue('ea_embed_title');
-                const embedDescription = interaction.fields.getTextInputValue('ea_embed_description');
-                const embedImage = interaction.fields.getTextInputValue('ea_embed_image') || null;
-                
-                console.log(`EA ping roles: "${pingRoles}"`);
-                console.log(`EA allowed roles: "${allowedRoles}"`);
-                console.log(`EA embed title: "${embedTitle}"`);
-                console.log(`EA embed description: "${embedDescription}"`);
-                console.log(`EA embed image URL: "${embedImage}"`);
-                
-                
-                const pingRoleIds = pingRoles.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                
-                
-                const allowedRoleIds = allowedRoles.split(',').map(id => id.trim()).filter(id => id.length > 0);
-                
-             
-                if (!existingConfig.earlyAccess) {
-                    existingConfig.earlyAccess = {};
-                }
-                
-                existingConfig.earlyAccess.pingRoles = pingRoleIds;
-                existingConfig.earlyAccess.allowedRoles = allowedRoleIds;
-                existingConfig.earlyAccess.embedTitle = embedTitle;
-                existingConfig.earlyAccess.embedDescription = embedDescription;
-                existingConfig.earlyAccess.imageUrl = embedImage;
-                
-               
-                console.log('The Full config object is:', JSON.stringify(existingConfig, null, 2));
-                
-               
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`The Config file has been written to ${configFilePath}`);
-                    
-                    
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Early Access settings have been configured successfully!';
+                if (!config.earlyAccess) config.earlyAccess = {};
+                const pings = interaction.fields.getTextInputValue('ea_ping_roles').split(',').map(r => r.trim()).filter(Boolean);
+                const allowed = interaction.fields.getTextInputValue('ea_allowed_roles').split(',').map(r => r.trim()).filter(Boolean);
+                config.earlyAccess.pingRoles = pings;
+                config.earlyAccess.allowedRoles = allowed;
+                config.earlyAccess.embedTitle = interaction.fields.getTextInputValue('ea_embed_title');
+                config.earlyAccess.embedDescription = interaction.fields.getTextInputValue('ea_embed_description');
+                config.earlyAccess.imageUrl = interaction.fields.getTextInputValue('ea_embed_image') || null;
+                msg = 'The Early access settings has been saved.';
             }
             else if (modalType === 'release') {
-                console.log('Processing release form submission');
-                
-                const embedTitle = interaction.fields.getTextInputValue('release_embed_title');
-                const embedDescription = interaction.fields.getTextInputValue('release_embed_description');
-                const embedImage = interaction.fields.getTextInputValue('release_embed_image') || null;
-                
-                console.log(`Release embed title: "${embedTitle}"`);
-                console.log(`Release embed description: "${embedDescription}"`);
-                console.log(`Release embed image URL: "${embedImage}"`);
-                
-               
-                if (!existingConfig.release) {
-                    existingConfig.release = {};
-                }
-                
-                existingConfig.release.embedTitle = embedTitle;
-                existingConfig.release.embedDescription = embedDescription;
-                existingConfig.release.imageUrl = embedImage;
-                
-               
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
-                
-                
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`The Config file has been written to ${configFilePath}`);
-                    
-                   
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Release settings have been configured successfully!';
+                if (!config.release) config.release = {};
+                config.release.embedTitle = interaction.fields.getTextInputValue('release_embed_title');
+                config.release.embedDescription = interaction.fields.getTextInputValue('release_embed_description');
+                config.release.imageUrl = interaction.fields.getTextInputValue('release_embed_image') || null;
+                msg = 'The Release embed has successfully been saved.';
             }
             else if (modalType === 'reinvites') {
-                console.log('Processing reinvites form submission');
-                
-                const embedTitle = interaction.fields.getTextInputValue('reinvites_embed_title');
-                const embedDescription = interaction.fields.getTextInputValue('reinvites_embed_description');
-                const embedImage = interaction.fields.getTextInputValue('reinvites_embed_image') || null;
-                
-                console.log(`Reinvites embed title: "${embedTitle}"`);
-                console.log(`Reinvites embed description: "${embedDescription}"`);
-                console.log(`Reinvites embed image URL: "${embedImage}"`);
-                
-              
-                if (!existingConfig.reinvites) {
-                    existingConfig.reinvites = {};
-                }
-                
-                existingConfig.reinvites.embedTitle = embedTitle;
-                existingConfig.reinvites.embedDescription = embedDescription;
-                existingConfig.reinvites.imageUrl = embedImage;
-                
-                
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
-                
-               
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`The Config file has been written to ${configFilePath}`);
-                    
-                    
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Reinvites settings have been configured successfully!';
+                if (!config.reinvites) config.reinvites = {};
+                config.reinvites.embedTitle = interaction.fields.getTextInputValue('reinvites_embed_title');
+                config.reinvites.embedDescription = interaction.fields.getTextInputValue('reinvites_embed_description');
+                config.reinvites.imageUrl = interaction.fields.getTextInputValue('reinvites_embed_image') || null;
+                msg = 'The Reinvites embed has successfully been saved.';
             }
             else if (modalType === 'over') {
-                console.log('Processing over form submission');
-                
-                const embedTitle = interaction.fields.getTextInputValue('over_embed_title');
-                const embedDescription = interaction.fields.getTextInputValue('over_embed_description');
-                const embedImage = interaction.fields.getTextInputValue('over_embed_image') || null;
-                
-                console.log(`Over embed title: "${embedTitle}"`);
-                console.log(`Over embed description: "${embedDescription}"`);
-                console.log(`Over embed image URL: "${embedImage}"`);
-                
-                
-                if (!existingConfig.over) {
-                    existingConfig.over = {};
-                }
-                
-                existingConfig.over.embedTitle = embedTitle;
-                existingConfig.over.embedDescription = embedDescription;
-                existingConfig.over.imageUrl = embedImage;
-                
-            
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
-                
-                
-                try {
-                    fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`The Config file has been written to ${configFilePath}`);
-                    
-                
-                    if (fs.existsSync(configFilePath)) {
-                        const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
-                    } else {
-                        console.error('The config file wasn\'t saved. Please try again!');
-                    }
-                } catch (writeError) {
-                    console.error('Error writing config file:', writeError);
-                }
-                
-                alreadyWritten = true;
-                
-                successMessage = 'Session Over embed has been configured successfully!';
+                if (!config.over) config.over = {};
+                config.over.embedTitle = interaction.fields.getTextInputValue('over_embed_title');
+                config.over.embedDescription = interaction.fields.getTextInputValue('over_embed_description');
+                config.over.imageUrl = interaction.fields.getTextInputValue('over_embed_image') || null;
+                msg = 'The Session over embed has successfully been saved.';
             }
 
-        
-            if (!alreadyWritten) {
-                fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-            }
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+            await interaction.reply({ content: msg || 'Saved.', ephemeral: true });
 
-           
-            if (!successMessage) {
-                successMessage = 'Configuration has been updated successfully.';
-            }
-
-            
-            await interaction.reply({ 
-                content: successMessage, 
-                ephemeral: true 
-            });
         } catch (error) {
-            console.error('Error in setup command:', error);
-            await interaction.reply({ 
-                content: 'An error occurred while saving configuration. Please try again later.', 
-                ephemeral: true 
-            });
+            console.error('setup modal error:', error);
+            await interaction.reply({ content: 'An error occurred while saving the settings. Please try again later!', ephemeral: true });
         }
     },
 };

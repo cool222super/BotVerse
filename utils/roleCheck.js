@@ -9,8 +9,8 @@ const path = require('path');
 
 /** 
 
- * @param {string} guildId 
- * @param {string} roleType 
+ * @param {string} 
+ * @param {string} 
  * @returns {boolean|Object}
 */
 function getRoleConfig(guildId, roleType = null) {

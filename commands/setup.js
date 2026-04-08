@@ -339,7 +339,7 @@ module.exports = {
           
             if (fs.existsSync(configFilePath)) {
                 const fileContent = fs.readFileSync(configFilePath, 'utf8');
-                console.log(`Existing config file content: ${fileContent}`);
+                console.log(`The Existing config file content is ${fileContent}`);
                 try {
                     existingConfig = JSON.parse(fileContent);
                 } catch (e) {
@@ -377,7 +377,7 @@ module.exports = {
                 existingConfig.leoRoles = leoRoleIds;
                 
               
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
+                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
                 
                 
                 try {

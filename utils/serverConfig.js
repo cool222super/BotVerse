@@ -11,7 +11,7 @@ const path = require('path');
 
 /**
 
- * @param {string} serverId 
+ * @param {string} 
  * @returns {Object} 
  */
 function getServerConfig(serverId) {

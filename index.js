@@ -4,8 +4,6 @@
 
 // Made by Supercoolsbro :D
 
-
-
 require('dotenv').config({ path: './.env' });
 const { token } = process.env;
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
@@ -20,7 +18,7 @@ const mongoURL = process.env.mongoURL;
 const connectToMongoDB = async () => {
   try {
     await mongoose.connect(mongoURL);
-    console.log('Successfully connected to MongoDB database');
+    console.log('connected to mongodb');
     return true;
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -28,7 +26,7 @@ const connectToMongoDB = async () => {
   }
 };
 
-const createModels = () => {
+const createModels = (client) => {
   const vehicleSchema = new mongoose.Schema({
     userId: { type: String, required: true },
     vehicles: [{ 
@@ -62,7 +60,6 @@ const createModels = () => {
     Economy: mongoose.model('Economy', economySchema)
   };
   
-  console.log('MongoDB models successfully created');
 };
 
 global.tictactoeGames = new Map();
@@ -94,10 +91,9 @@ const loadVehicleData = async () => {
       client.vehicleData[vehicle.userId] = vehicle.vehicles;
     }
     
-    console.log('Vehicle data successfully loaded from MongoDB');
   } catch (error) {
-    console.error('Error loading vehicle data from MongoDB:', error);
-    
+    console.error('The bot has failed to load vehicle data from mongodb, the bot is going to try falling back to json:', error);
+
     const vehicleDataPath = path.join(__dirname, 'data', 'vehicleData');
     client.vehicleData = {};
 
@@ -113,10 +109,9 @@ const loadVehicleData = async () => {
         const data = fs.readFileSync(path.join(vehicleDataPath, file), 'utf8');
         client.vehicleData[userId] = JSON.parse(data);
       } catch (error) {
-        console.error(`Error loading vehicle data from ${file}:`, error);
+        console.error(`error reading ${file}:`, error);
       }
     }
-    console.log('Vehicle data loaded successfully from JSON (This is a MongoDB fallback)');
   }
 };
 
@@ -124,15 +119,12 @@ const loadTicketsData = async () => {
   try {
     client.ticketsData = {};
     const tickets = await client.models.Ticket.find({});
-    
     for (const ticket of tickets) {
       client.ticketsData[ticket.userId] = ticket.tickets;
     }
-    
-    console.log('Tickets data loaded successfully from MongoDB');
   } catch (error) {
-    console.error('Error loading tickets data from MongoDB:', error);
-    
+    console.error('The bot has failed to load ticket data from mongodb, the bot is going to try falling back to json:', error);
+
     const ticketsDataPath = path.join(__dirname, 'data', 'tickets');
     client.ticketsData = {};
 
@@ -141,17 +133,13 @@ const loadTicketsData = async () => {
       return;
     }
 
-    const files = fs.readdirSync(ticketsDataPath).filter(file => file.endsWith('.json'));
-    for (const file of files) {
+    for (const file of fs.readdirSync(ticketsDataPath).filter(f => f.endsWith('.json'))) {
       try {
-        const userId = file.replace('.json', '');
-        const data = fs.readFileSync(path.join(ticketsDataPath, file), 'utf8');
-        client.ticketsData[userId] = JSON.parse(data);
-      } catch (error) {
-        console.error(`Error loading tickets data from ${file}:`, error);
+        client.ticketsData[file.replace('.json', '')] = JSON.parse(fs.readFileSync(path.join(ticketsDataPath, file), 'utf8'));
+      } catch {
+        console.error(`Error reading ${file}`);
       }
     }
-    console.log('Tickets data loaded successfully from JSON (This is a MongoDB fallback)');
   }
 };
 
@@ -165,47 +153,18 @@ client.saveVehicleData = async (userId) => {
       { upsert: true, new: true }
     );
     
-    console.log(`Vehicle data saved to MongoDB for user ${userId}`);
   } catch (error) {
-    console.error(`Error saving vehicle data to MongoDB for user ${userId}:`, error);
-    
+    console.error(`The bot has failed to save vehicle data for ${userId}:`, error);
+
     const vehicleDataPath = path.join(__dirname, 'data', 'vehicleData');
     if (!fs.existsSync(vehicleDataPath)) {
       fs.mkdirSync(vehicleDataPath, { recursive: true });
     }
-    
+
     fs.writeFileSync(
       path.join(vehicleDataPath, `${userId}.json`),
       JSON.stringify(client.vehicleData[userId], null, 2)
     );
-    console.log(`Vehicle data saved to JSON for user ${userId} (MongoDB fallback)`);
-  }
-};
-
-client.saveTicketData = async (userId) => {
-  try {
-    if (!client.ticketsData[userId]) return;
-    
-    await client.models.Ticket.findOneAndUpdate(
-      { userId },
-      { userId, tickets: client.ticketsData[userId] },
-      { upsert: true, new: true }
-    );
-    
-    console.log(`Ticket data saved to MongoDB for user ${userId}`);
-  } catch (error) {
-    console.error(`Error saving ticket data to MongoDB for user ${userId}:`, error);
-    
-    const ticketsDataPath = path.join(__dirname, 'data', 'tickets');
-    if (!fs.existsSync(ticketsDataPath)) {
-      fs.mkdirSync(ticketsDataPath, { recursive: true });
-    }
-    
-    fs.writeFileSync(
-      path.join(ticketsDataPath, `${userId}.json`),
-      JSON.stringify(client.ticketsData[userId], null, 2)
-    );
-    console.log(`Ticket data saved to JSON for user ${userId} (MongoDB fallback)`);
   }
 };
 
@@ -223,9 +182,8 @@ client.saveTicketData = async (userId) => {
       JSON.stringify(client.ticketsData[userId], null, 2)
     );
     
-    console.log(`Ticket data saved for user ${userId}`);
   } catch (error) {
-    console.error(`Error saving ticket data for user ${userId}:`, error);
+    console.error(`The bot has failed to save ticket data for ${userId}:`, error);
   }
 };
 
@@ -242,7 +200,7 @@ const handleEvents = async () => {
           } else {
             client.on(event.name, (...args) => event.execute(...args, client));
           }
-          console.log(`Successfully loaded event from array: ${event.name}`);
+
         });
       } else {
         const event = eventModule;
@@ -251,10 +209,10 @@ const handleEvents = async () => {
         } else {
           client.on(event.name, (...args) => event.execute(...args, client));
         }
-        console.log(`Successfully loaded event: ${event.name}`);
+
       }
     } catch (error) {
-      console.error(`Error loading event ${file}:`, error);
+      console.error(`The bot has failed to load event ${file}:`, error);
     }
   }
 };
@@ -266,102 +224,76 @@ const loadCommands = async () => {
   client.commands = new Collection();
   client.commandArray = [];
 
-  console.log('Starting to load commands...');
-  console.log(`Found ${commandFolders.length} command folders/files`);
-
   for (const folder of commandFolders) {
     const folderPath = path.join(__dirname, "commands", folder);
-    
+
     const stats = fs.statSync(folderPath);
     if (stats.isDirectory()) {
-      console.log(`Processing directory: ${folder}`);
       const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith(".js"));
-      console.log(`Found ${commandFiles.length} command files in ${folder}`);
-      
+
       for (const file of commandFiles) {
         try {
           delete require.cache[require.resolve(`${folderPath}/${file}`)];
           const command = require(`${folderPath}/${file}`);
-          
+
           if (!command.data || typeof command.data.toJSON !== "function") {
-            console.error(`Command file ${folder}/${file} is missing required properties`);
+            console.error(`${folder}/${file} is missing required properties`);
             continue;
           }
-          
+
           const commandName = command.data.name;
           if (commandNames.has(commandName)) {
-            console.error(`Duplicate command name found: ${commandName} in ${folder}/${file}`);
+            console.error(`There is a duplicate command: ${commandName} in ${folder}/${file}`);
             continue;
           }
-          
+
           commandNames.add(commandName);
           client.commands.set(commandName, command);
           client.commandArray.push(command.data.toJSON());
-          console.log(`Loaded command: ${commandName} from ${folder}/${file}`);
         } catch (error) {
-          console.error(`Error loading command file ${folder}/${file}:`, error);
+          console.error(`Error loading ${folder}/${file}:`, error);
         }
       }
     } else if (folder.endsWith(".js")) {
       try {
         delete require.cache[require.resolve(folderPath)];
         const command = require(folderPath);
-        
+
         if (!command.data || typeof command.data.toJSON !== "function") {
-          console.error(`Command file ${folder} is missing required properties`);
+          console.error(`${folder} is missing required properties`);
           continue;
         }
 
         const commandName = command.data.name;
         if (commandNames.has(commandName)) {
-          console.error(`Duplicate command name found: ${commandName} in ${folder}`);
+          console.error(`There is a duplicate command: ${commandName} in ${folder}`);
           continue;
         }
 
         commandNames.add(commandName);
         client.commands.set(commandName, command);
         client.commandArray.push(command.data.toJSON());
-        console.log(`Loaded command: ${commandName} from ${folder}`);
       } catch (error) {
-        console.error(`Error loading command file ${folder}:`, error);
+        console.error(`Error loading ${folder}:`, error);
       }
     }
   }
 
-  console.log(`Total commands loaded: ${client.commandArray.length}`);
-
   const rest = new REST({ version: "9" }).setToken(token);
   try {
-    console.log('Started refreshing application (/) commands globally...');
-    
-    console.log('Commands being registered:', client.commandArray.map(cmd => cmd.name));
-    
     await rest.put(
       Routes.applicationCommands(clientId),
       { body: client.commandArray },
     );
-
-    console.log("Slash commands successfully registered globally.");
-    
-    const registeredCommands = await rest.get(
-      Routes.applicationCommands(clientId)
-    );
-    console.log('Registered commands:', registeredCommands.map(cmd => cmd.name));
-    
-    if (registeredCommands.some(cmd => cmd.name === 'profile')) {
-      console.log('The Profile command is registered correctly');
-    } else {
-      console.log('The Profile command is NOT registered');
-    }
+    console.log(`registered ${client.commandArray.length} commands`);
   } catch (error) {
-    console.error("Error registering commands:", error);
-    console.error(error);
+    console.error('The bot has failed to register commands:', error);
   }
 };
 
 const migrateDataToMongoDB = async () => {
   try {
-    console.log('Starting data migration to MongoDB...');
+
     
     const vehicleDataPath = path.join(__dirname, 'data', 'vehicleData');
     if (fs.existsSync(vehicleDataPath)) {
@@ -378,7 +310,7 @@ const migrateDataToMongoDB = async () => {
             { upsert: true }
           );
         } catch (error) {
-          console.error(`Error migrating vehicle data from ${file}:`, error);
+          console.error(`The bot has failed to migrate vehicle data from ${file}:`, error);
         }
       }
     }
@@ -398,14 +330,14 @@ const migrateDataToMongoDB = async () => {
             { upsert: true }
           );
         } catch (error) {
-          console.error(`Error migrating tickets data from ${file}:`, error);
+          console.error(`The bot has failed to migrate ticket data from ${file}:`, error);
         }
       }
     }
     
-    console.log('Data migration to MongoDB has completed');
+
   } catch (error) {
-    console.error('Error during data migration:', error);
+    console.error('The data migration has failed:', error);
   }
 };
 
@@ -413,7 +345,7 @@ const migrateDataToMongoDB = async () => {
   try {
     const mongoConnected = await connectToMongoDB();
     
-    createModels();
+    createModels(client);
     
     if (mongoConnected) {
       await migrateDataToMongoDB();
@@ -421,7 +353,7 @@ const migrateDataToMongoDB = async () => {
       await loadVehicleData();
       await loadTicketsData();
     } else {
-      console.log('Mongodb has failed to connect so the bot will now attempt to load data from JSON files as a fallback');
+      console.log('Mongodb has failed to connect, the bot will now try to load from json instead');
       await loadVehicleData();
       await loadTicketsData();
     }
@@ -432,7 +364,7 @@ const migrateDataToMongoDB = async () => {
     await initializeEconomy();
     global.cooldowns = new Map();
   } catch (error) {
-    console.error("Error during bot initialization:", error);
+    console.error('The bot init has failed:', error);
   }
 })();
 

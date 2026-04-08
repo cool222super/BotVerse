@@ -64,8 +64,8 @@ function getServerConfig(serverId) {
 
 /**
  
- * @param {Object} member 
- * @param {string} serverId 
+ * @param {Object} 
+ * @param {string} 
  * @returns {boolean} 
  */
 function hasStaffRole(member, serverId) {
@@ -78,8 +78,8 @@ function hasStaffRole(member, serverId) {
 
 /**
  
- * @param {Object} member 
- * @param {string} serverId -
+ * @param {Object} 
+ * @param {string} 
  * @returns {boolean} 
  */
 function hasCivilianRole(member, serverId) {
@@ -92,7 +92,7 @@ function hasCivilianRole(member, serverId) {
 
 /**
  
- * @param {string} serverId
+ * @param {string} 
  * @returns {number} 
  */
 function getVehicleLimit(serverId) {

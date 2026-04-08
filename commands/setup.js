@@ -1,5 +1,9 @@
 
 
+// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+
+// Made by Supercoolsbro :D
+
 const {
     SlashCommandBuilder,
     EmbedBuilder,

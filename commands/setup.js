@@ -387,9 +387,9 @@ module.exports = {
                    
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -403,7 +403,7 @@ module.exports = {
                 console.log('Processing vehicle limit form submission');
                 
                 const limitValue = interaction.fields.getTextInputValue('limit_value');
-                console.log(`Raw limit value from form: "${limitValue}"`);
+                console.log(`The Raw limit value from the form is "${limitValue}"`);
                 
                 const limit = parseInt(limitValue, 10);
                 console.log(`Parsed limit: ${limit}, type: ${typeof limit}`);
@@ -422,7 +422,7 @@ module.exports = {
                 console.log(`Set vehicleLimit in config object: ${existingConfig.vehicleLimit}, type: ${typeof existingConfig.vehicleLimit}`);
                 
                
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
+                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
                 
                 
                 try {
@@ -432,16 +432,16 @@ module.exports = {
                    
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                         
                         try {
                             const parsedConfig = JSON.parse(verifyData);
-                            console.log(`Parsed config from file - vehicleLimit: ${parsedConfig.vehicleLimit}, type: ${typeof parsedConfig.vehicleLimit}`);
+                            console.log(`Parsed config from the file - the vehicleLimit is ${parsedConfig.vehicleLimit}, type: ${typeof parsedConfig.vehicleLimit}`);
                         } catch (e) {
                             console.error('Error parsing verification data:', e);
                         }
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -473,7 +473,7 @@ module.exports = {
                 existingConfig.startupEmbed.imageUrl = embedImage;
                 
                
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
+                console.log('Full config object is:', JSON.stringify(existingConfig, null, 2));
                 
                 
                 try {
@@ -483,9 +483,9 @@ module.exports = {
                   
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -528,19 +528,19 @@ module.exports = {
                 existingConfig.earlyAccess.imageUrl = embedImage;
                 
                
-                console.log('Full config object before saving:', JSON.stringify(existingConfig, null, 2));
+                console.log('The Full config object is:', JSON.stringify(existingConfig, null, 2));
                 
                
                 try {
                     fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
+                    console.log(`The Config file has been written to ${configFilePath}`);
                     
                     
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -576,14 +576,14 @@ module.exports = {
                 
                 try {
                     fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
+                    console.log(`The Config file has been written to ${configFilePath}`);
                     
                    
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -619,14 +619,14 @@ module.exports = {
                
                 try {
                     fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
+                    console.log(`The Config file has been written to ${configFilePath}`);
                     
                     
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);
@@ -662,14 +662,14 @@ module.exports = {
                 
                 try {
                     fs.writeFileSync(configFilePath, JSON.stringify(existingConfig, null, 2), 'utf8');
-                    console.log(`Config file written to: ${configFilePath}`);
+                    console.log(`The Config file has been written to ${configFilePath}`);
                     
                 
                     if (fs.existsSync(configFilePath)) {
                         const verifyData = fs.readFileSync(configFilePath, 'utf8');
-                        console.log(`Verification - saved config data: ${verifyData}`);
+                        console.log(`Verification - Successfully saved config data: ${verifyData}`);
                     } else {
-                        console.error('Config file does not exist after writing!');
+                        console.error('The config file wasn\'t saved. Please try again!');
                     }
                 } catch (writeError) {
                     console.error('Error writing config file:', writeError);

@@ -1,7 +1,8 @@
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
+
 
 require('dotenv').config();
 const axios = require('axios');

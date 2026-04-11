@@ -1,11 +1,6 @@
-
-
-
 // Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
 
 // Made by Supercoolsbro :D
-
-
 
 const { Events } = require('discord.js');
 const { removeTicket, removeAllTickets } = require('../commands/utility/ticketremove.js');
@@ -13,48 +8,55 @@ const { userDataCache } = require('./profilebutton.js');
 
 module.exports = {
     name: Events.InteractionCreate,
+
     async execute(interaction) {
         if (!interaction.isStringSelectMenu()) return;
         if (!interaction.customId.startsWith('remove_ticket_')) return;
 
+        try {
+            await interaction.deferUpdate();
 
-        await interaction.deferUpdate();
+            const userId = interaction.customId.split('_')[2];
+            const selected = interaction.values[0];
 
-        const userId = interaction.customId.split('_')[2];
-        const selectedValue = interaction.values[0];
+            let success = false;
+            let message = '';
 
-        let success;
-        let message;
+            if (selected === 'all') {
+                success = await removeAllTickets(userId, interaction);
+                message = success
+                    ? 'All tickets have been removed.'
+                    : 'Couldn’t remove all tickets, try again later.';
+            } else {
+                const index = Number(selected);
 
-        if (selectedValue === 'all') {
-            success = await removeAllTickets(userId, interaction);
-            message = success ? 'All tickets have been removed.' : 'Failed to remove all tickets. Please try again.';
-        } else {
-            const selectedIndex = parseInt(selectedValue);
-            success = await removeTicket(userId, selectedIndex, interaction);
-            message = success ? `Ticket ${selectedIndex + 1} has been removed.` : 'Failed to remove the ticket. Please try again.';
-        }
-        await new Promise(resolve => setTimeout(resolve, 3000));
+                success = await removeTicket(userId, index, interaction);
+                message = success
+                    ? `Ticket ${index + 1} removed successfully.`
+                    : 'Couldn’t remove that ticket, try again.';
+            }
+            await new Promise(r => setTimeout(r, 3000));
 
-        if (success) {
-            if (userDataCache && userDataCache.tickets) {
+            if (success && userDataCache?.tickets) {
                 userDataCache.tickets.delete(userId);
             }
-            
-            await interaction.editReply({ 
-                content: message, 
-                embeds: [], 
-                components: [] 
+
+            await interaction.editReply({
+                content: message,
+                embeds: [],
+                components: []
             });
-        } else {
-            await interaction.editReply({ 
-                content: message, 
-                embeds: [], 
-                components: [] 
-            });
+
+        } catch (err) {
+            console.error('Error handling ticket removal menu:', err);
+
+            if (!interaction.replied) {
+                await interaction.editReply({
+                    content: 'An error occurred while processing this request.',
+                    embeds: [],
+                    components: []
+                });
+            }
         }
     },
 };
-
-
-

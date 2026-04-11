@@ -1,94 +1,69 @@
-
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
-
-
-
 
 const { Events, EmbedBuilder } = require('discord.js');
 
 module.exports = {
-    name: Events.InteractionCreate,
-    async execute(interaction) {
-        if (!interaction.isModalSubmit() || interaction.customId !== 'session_feedback_modal') return;
+  name: Events.InteractionCreate,
 
-        try {
-         
-            if (!interaction.isRepliable()) return;
+  async execute(interaction) {
+    if (!interaction.isModalSubmit()) return;
+    if (interaction.customId !== 'session_feedback_modal') return;
 
-            const host = interaction.fields.getTextInputValue('host');
-            const rating = interaction.fields.getTextInputValue('rating');
-            const improvement = interaction.fields.getTextInputValue('improvement');
-            const notes = interaction.fields.getTextInputValue('notes') || 'No additional notes provided';
+    try {
+      const host = interaction.fields.getTextInputValue('host');
+      const rating = parseInt(interaction.fields.getTextInputValue('rating'), 10);
+      const improvement = interaction.fields.getTextInputValue('improvement');
+      const notes =
+        interaction.fields.getTextInputValue('notes') || 'No additional notes provided';
 
-          
-            const numRating = parseInt(rating);
-            if (isNaN(numRating) || numRating < 1 || numRating > 10) {
-                if (interaction.isRepliable()) {
-                    await interaction.reply({
-                        content: 'Please provide a valid rating between 1 and 10.',
-                        ephemeral: true
-                    }).catch(() => {});
-                }
-                return;
-            }
+      if (isNaN(rating) || rating < 1 || rating > 10) {
+        return interaction.reply({
+          content: 'Please provide a rating between 1 and 10.',
+          ephemeral: true
+        });
+      }
 
-          
-            const feedbackEmbed = new EmbedBuilder()
-                .setTitle('**Session Feedback Received**')
-                .setDescription(`Feedback from ${interaction.user}`)
-                .addFields(
-                    { name: 'Host', value: host, inline: true },
-                    { name: 'Rating', value: `${rating}/10`, inline: true },
-                    { name: 'Improvements Suggested', value: improvement },
-                    { name: 'Additional Notes', value: notes }
-                )
-                .setColor('#77DD77')
-                .setTimestamp();
+      const embed = new EmbedBuilder()
+        .setTitle('Session Feedback Received')
+        .setDescription(`Feedback from ${interaction.user.tag}`)
+        .addFields(
+          { name: 'Host', value: host, inline: true },
+          { name: 'Rating', value: `${rating}/10`, inline: true },
+          { name: 'Improvements', value: improvement },
+          { name: 'Additional Notes', value: notes }
+        )
+        .setColor('#77DD77')
+        .setTimestamp();
 
-           
-            const feedbackChannelId = '1355829280696696943';
-            const feedbackChannel = await interaction.client.channels.fetch(feedbackChannelId);
-            
-            if (feedbackChannel) {
-                await feedbackChannel.send({ embeds: [feedbackEmbed] });
-                
-               
-                if (interaction.isRepliable()) {
-                    await interaction.reply({
-                        content: 'Thank you for your feedback!',
-                        ephemeral: true
-                    }).catch(() => {});
-                }
-            }
+      const channelId = '1355829280696696943';
+      const channel = await interaction.client.channels.fetch(channelId).catch(() => null);
 
-        } catch (error) {
-            
-            if (error.code === 10062) {
-                console.log('Interaction expired, ignoring.');
-                return;
-            }
+      if (!channel) {
+        return interaction.reply({
+          content: 'Feedback channel not found.',
+          ephemeral: true
+        });
+      }
 
-            console.error('Error handling feedback modal submission:', error);
-            
-          
-            if (!interaction.replied && interaction.isRepliable()) {
-                try {
-                    await interaction.reply({
-                        content: 'There was an error submitting your feedback. Please try again.',
-                        ephemeral: true
-                    }).catch(() => {});
-                } catch (err) {
-                 
-                    if (err.code !== 10062) {
-                        console.error('Error sending error response:', err);
-                    }
-                }
-            }
-        }
-    },
+      await channel.send({ embeds: [embed] });
+
+      return interaction.reply({
+        content: 'Thanks for your feedback!',
+        ephemeral: true
+      });
+
+    } catch (err) {
+      console.error('Feedback modal error:', err);
+
+      if (!interaction.replied) {
+        return interaction.reply({
+          content: 'An error occurred while sending your feedback.',
+          ephemeral: true
+        }).catch(() => {});
+      }
+    }
+  }
 };
-

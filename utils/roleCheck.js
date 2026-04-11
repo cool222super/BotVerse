@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Gets role config for a guild
+ * this gets the role configs for the guild
  * @param {string} guildId
  * @param {string|null} roleType
  * @returns {Object|boolean}

@@ -1,145 +1,105 @@
 
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
-
-
-
 
 const { InteractionType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { getServerConfig } = require('../utils/serverConfig');
 
-const jsonFilePath = path.join(__dirname, '..', 'data', 'earlyAccessLinks.json');
-const startupFile = path.join(__dirname, '..', 'data', 'startup.json');
+const LINKS_FILE = path.join(__dirname, '..', 'data', 'earlyAccessLinks.json');
+const STARTUP_FILE = path.join(__dirname, '..', 'data', 'startup.json');
 
-function initializeJsonFile() {
-    try {
-        const dataDir = path.join(__dirname, '..', 'data');
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-        }
-
-        let links = {};
-        if (fs.existsSync(jsonFilePath)) {
-            const data = fs.readFileSync(jsonFilePath, 'utf8');
-            try {
-                links = JSON.parse(data);
-            } catch (error) {
-                console.error('Error parsing existing JSON file:', error);
-            }
-        }
-
-        if (!fs.existsSync(jsonFilePath)) {
-            fs.writeFileSync(jsonFilePath, JSON.stringify(links, null, 2), 'utf8');
-        }
-        
-        return links;
-    } catch (error) {
-        console.error('Error initializing JSON file:', error);
-        return {};
-    }
+function loadLinks() {
+  try {
+    if (!fs.existsSync(LINKS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8'));
+  } catch (err) {
+    console.error('Failed to load early access links:', err);
+    return {};
+  }
 }
 
-const links = initializeJsonFile();
+function loadStartupMessageId() {
+  try {
+    if (!fs.existsSync(STARTUP_FILE)) return null;
+    const data = JSON.parse(fs.readFileSync(STARTUP_FILE, 'utf8'));
+    return data?.messageId || null;
+  } catch (err) {
+    console.error('Failed to load startup file:', err);
+    return null;
+  }
+}
+
+async function userReacted(message, userId) {
+  const reaction = message.reactions.cache.get('✅');
+  if (!reaction) return false;
+
+  const users = await reaction.users.fetch();
+  return users.has(userId);
+}
 
 module.exports = {
-    name: 'interactionCreate',
-    async execute(interaction) {
-        if (!interaction.isButton()) return;
+  name: 'interactionCreate',
 
-        if (interaction.customId === 'early_access_link') {
-            try {
-                await interaction.deferReply({ ephemeral: true });
+  async execute(interaction) {
+    if (!interaction.isButton()) return;
+    if (interaction.customId !== 'early_access_link') return;
 
-                const serverId = interaction.guild.id;
-                const serverConfig = getServerConfig(serverId);
+    await interaction.deferReply({ ephemeral: true });
 
-                if (!serverConfig || !serverConfig.earlyAccess || !serverConfig.earlyAccess.allowedRoles) {
-                    return await interaction.editReply({
-                        content: "Early access roles haven't been set up yet. Please ask an administrator to use the `/setup` command and configure 'Early Access' settings."
-                    });
-                }
+    try {
+      const serverConfig = getServerConfig(interaction.guild.id);
 
-                const allowedRoles = serverConfig.earlyAccess.allowedRoles;
-                
-                const hasAllowedRole = allowedRoles.some(roleId => 
-                    interaction.member.roles.cache.has(roleId)
-                );
+      const allowedRoles = serverConfig?.earlyAccess?.allowedRoles;
 
-                if (!hasAllowedRole) {
-                    return await interaction.editReply({
-                        content: 'You do not have permission to click on this button!'
-                    });
-                }
+      if (!allowedRoles || !allowedRoles.length) {
+        return interaction.editReply(
+          "Early access isn't set up yet. Ask an admin to configure it using /setup."
+        );
+      }
 
-                try {
-                    const startupData = JSON.parse(fs.readFileSync(startupFile, 'utf-8'));
-                    const startupMessage = await interaction.channel.messages.fetch(startupData.messageId);
-                    
-                    const reaction = startupMessage.reactions.cache.get('✅');
-                    if (!reaction) {
-                        return await interaction.editReply({
-                            content: `Please react to the startup message to have access to the early access link. React [here](${startupMessage.url}).`
-                        });
-                    }
+      const hasRole = interaction.member.roles.cache.some(role =>
+        allowedRoles.includes(role.id)
+      );
 
-                    const userReacted = await reaction.users.fetch().then(users => users.has(interaction.user.id));
-                    if (!userReacted) {
-                        return await interaction.editReply({
-                            content: `Please react to the startup message to have access to the early access link. React [here](${startupMessage.url}).`
-                        });
-                    }
+      if (!hasRole) {
+        return interaction.editReply("You don't have permission to use this.");
+      }
 
-                    let currentLinks = {};
-                    try {
-                        if (fs.existsSync(jsonFilePath)) {
-                            const data = fs.readFileSync(jsonFilePath, 'utf8');
-                            currentLinks = JSON.parse(data);
-                        }
-                    } catch (error) {
-                        console.error('Error reading links file:', error);
-                    }
+      const startupMessageId = loadStartupMessageId();
 
-                    const link = currentLinks[interaction.message.id];
+      if (!startupMessageId) {
+        return interaction.editReply('Startup message not found yet.');
+      }
 
-                    if (!link) {
-                        return await interaction.editReply({
-                            content: 'This early access link has expired or is no longer available.'
-                        });
-                    }
+      const startupMessage = await interaction.channel.messages.fetch(startupMessageId);
 
-                    await interaction.editReply({
-                        content: `**Early-Access:** ${link}`
-                    });
+      const reacted = await userReacted(startupMessage, interaction.user.id);
 
-                } catch (error) {
-                    console.error('Error checking startup reaction:', error);
-                    await interaction.editReply({
-                        content: 'Please wait for the host to post the startup message.'
-                    });
-                }
+      if (!reacted) {
+        return interaction.editReply(
+          `You need to react to the startup message first: ${startupMessage.url}`
+        );
+      }
 
-            } catch (error) {
-                console.error('Error handling early access button:', error);
-                try {
-                    if (!interaction.replied) {
-                        await interaction.reply({
-                            content: 'An error occurred while processing your request.',
-                            ephemeral: true
-                        });
-                    } else {
-                        await interaction.editReply({
-                            content: 'An error occurred while processing your request.'
-                        });
-                    }
-                } catch (e) {
-                    console.error('Error sending error message:', e);
-                }
-            }
-        }
+      const links = loadLinks();
+      const link = links[interaction.message.id];
+
+      if (!link) {
+        return interaction.editReply('This early access link is no longer available.');
+      }
+
+      return interaction.editReply(`**Early Access:** ${link}`);
+
+    } catch (err) {
+      console.error('Early access handler error:', err);
+
+      return interaction.editReply(
+        'An error occurred. The startup message might not be available yet.'
+      ).catch(() => {});
     }
+  }
 };

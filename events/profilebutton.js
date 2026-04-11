@@ -1,380 +1,286 @@
-
-
 // Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
 
 // Made by Supercoolsbro :D
 
+const {
+    Events,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} = require('discord.js');
 
-
-
-const { Events, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+
 const unbelievaboatAPI = require('../utils/unbelievaboat');
 
-const userDataCache = {
+const cache = {
     tickets: new Map(),
     vehicles: new Map()
 };
 
-const ensureDirectories = () => {
-    const directories = [
+// please make sure these folders exist as these folders are VERY important as it stores all the vehicle data, and ticket data
+function ensureFolders() {
+    const dirs = [
         path.join(__dirname, '..', 'data'),
         path.join(__dirname, '..', 'data', 'tickets'),
         path.join(__dirname, '..', 'data', 'vehicleData')
     ];
 
-    directories.forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-            console.log(`Created directory: ${dir}`);
+    for (const d of dirs) {
+        if (!fs.existsSync(d)) {
+            fs.mkdirSync(d, { recursive: true });
         }
-    });
-};
+    }
+}
 
-const ensureUserDataFile = (userId, dataType) => {
-    const dataPath = path.join(
-        __dirname, 
-        '..', 
-        'data', 
-        dataType === 'vehicles' ? 'vehicleData' : 'tickets',
+// this part here will 
+function ensureFile(userId, type) {
+    const folder = type === 'vehicles' ? 'vehicleData' : 'tickets';
+
+    const file = path.join(
+        __dirname,
+        '..',
+        'data',
+        folder,
         `${userId}.json`
     );
 
-    if (!fs.existsSync(dataPath)) {
-        fs.writeFileSync(dataPath, JSON.stringify([], null, 2), 'utf8');
-        console.log(`Created ${dataType} file for user ${userId}`);
+    if (!fs.existsSync(file)) {
+        fs.writeFileSync(file, JSON.stringify([], null, 2));
     }
-    return dataPath;
-};
 
-const createEmbed = (title, description) => {
-    const embed = new EmbedBuilder()
-        .setColor('#77DD77');
-    
+    return file;
+}
+
+function makeEmbed(title, desc) {
+    const embed = new EmbedBuilder().setColor('#77DD77');
+
     if (title) embed.setTitle(title);
-    if (description && description.length > 0) {
-        embed.setDescription(description);
-    } else {
-        embed.setDescription('No information available.');
-    }
-    
+
+    embed.setDescription(desc?.length ? desc : 'No info found.');
+
     return embed;
-};
+}
 
-const createPaginationButtons = (userId, currentPage, totalPages, type) => {
-    const buttons = [];
-    
+function pagination(userId, page, maxPages, type) {
+    const row = [];
 
-    if (currentPage > 0) {
-        buttons.push(
+    if (page > 0) {
+        row.push(
             new ButtonBuilder()
-                .setCustomId(`prev_${type}_${userId}_${currentPage}`)
-                .setLabel('Previous')
+                .setCustomId(`prev_${type}_${userId}_${page}`)
+                .setLabel('Prev')
                 .setStyle(ButtonStyle.Secondary)
         );
     }
-    
 
-    if (currentPage < totalPages - 1) {
-        buttons.push(
+    if (page < maxPages - 1) {
+        row.push(
             new ButtonBuilder()
-                .setCustomId(`next_${type}_${userId}_${currentPage}`)
+                .setCustomId(`next_${type}_${userId}_${page}`)
                 .setLabel('Next')
                 .setStyle(ButtonStyle.Secondary)
         );
     }
-    
-   
-    return new ActionRowBuilder().addComponents(buttons);
-};
 
-const loadUserData = async (userId, dataType) => {
+    if (!row.length) return null;
+
+    return new ActionRowBuilder().addComponents(row);
+}
+
+async function loadUser(userId, type) {
     try {
-        const dataPath = path.join(__dirname, '..', 'data', 
-            dataType === 'vehicles' ? 'vehicleData' : 'tickets', 
+        const folder = type === 'vehicles' ? 'vehicleData' : 'tickets';
+
+        const file = path.join(
+            __dirname,
+            '..',
+            'data',
+            folder,
             `${userId}.json`
         );
 
-        if (fs.existsSync(dataPath)) {
-            const rawData = fs.readFileSync(dataPath, 'utf8');
-            const parsedData = JSON.parse(rawData);
-            
-            
-            if (dataType === 'vehicles') {
-                
-                if (parsedData.items) {
-                    return parsedData.items;
-                }
-                if (Array.isArray(parsedData)) {
-                    return parsedData;
-                }
-            }
-            return parsedData;
+        if (!fs.existsSync(file)) return [];
+
+        const raw = fs.readFileSync(file, 'utf8');
+        const data = JSON.parse(raw);
+
+        if (type === 'vehicles') {
+            if (Array.isArray(data)) return data;
+            if (data?.items) return data.items;
         }
-        return [];
-    } catch (error) {
-        console.error(`Error loading ${dataType} data:`, error);
+
+        return data;
+    } catch (err) {
+        console.log('load error:', err.message);
         return [];
     }
-};
+}
+
+function vehicleEmbeds(data, page) {
+    const perPage = 4;
+    const pages = Math.ceil(data.length / perPage);
+
+    if (!data.length) {
+        return [
+            makeEmbed(
+                null,
+                'No vehicles have been registered by this user.'
+            )
+        ];
+    }
+
+    const slice = data.slice(page * perPage, page * perPage + perPage);
+
+    return slice.map((v, i) => {
+        return new EmbedBuilder()
+            .setColor('#77DD77')
+            .setTitle(`Vehicle #${page * perPage + i + 1}`)
+            .setDescription(
+                `**Vehicle:** ${v.year} ${v.make} ${v.model}\n` +
+                `**Color:** ${v.color}\n` +
+                `**Plate:** ${v.numberPlate || v.licensePlate || 'N/A'}`
+            )
+            .setFooter({ text: `Page ${page + 1}/${pages}` });
+    });
+}
+
+function ticketEmbeds(data, page) {
+    const perPage = 4;
+    const pages = Math.ceil((data?.length || 0) / perPage);
+
+    if (!Array.isArray(data) || !data.length) {
+        return [makeEmbed(null, 'No tickets found for this user.')];
+    }
+
+    const slice = data.slice(page * perPage, page * perPage + perPage);
+
+    return slice.map((t, i) => {
+        const date = t.date ? new Date(t.date).toLocaleString() : 'Unknown';
+        const fine = Number(t.price || t.fine || 0);
+
+        return new EmbedBuilder()
+            .setColor('#77DD77')
+            .setTitle(`Ticket #${page * perPage + i + 1}`)
+            .addFields(
+                { name: 'Offense', value: t.offense || t.reason || 'Unknown' },
+                { name: 'Fine', value: `$${fine.toLocaleString()}` },
+                { name: 'Date', value: date },
+                {
+                    name: 'Officer',
+                    value: t.issuedBy ? `<@${t.issuedBy}>` : 'Unknown'
+                }
+            )
+            .setFooter({ text: `Page ${page + 1}/${pages}` });
+    });
+}
 
 module.exports = {
     name: Events.InteractionCreate,
-    userDataCache,
+    cache,
+
     async execute(interaction) {
         if (!interaction.isButton()) return;
 
-       
-        if (!interaction.customId.startsWith('show_') && 
-            !interaction.customId.includes('_registration_') && 
-            !interaction.customId.includes('_ticket_') &&
-            !interaction.customId.startsWith('_balance_')) {
-            return;
-        }
+        const id = interaction.customId;
+
+        if (
+            !id.startsWith('show_') &&
+            !id.includes('_registration_') &&
+            !id.includes('_ticket_') &&
+            !id.startsWith('show_balance_')
+        ) return;
 
         try {
-            const parts = interaction.customId.split('_');
+            const parts = id.split('_');
             const userId = parts[2];
 
-            if (interaction.customId.startsWith('show_balance_')) {
+            // balance
+            if (id.startsWith('show_balance_')) {
                 await interaction.deferReply({ ephemeral: true });
-                
-                const guildId = interaction.guild.id;
-                const balance = await unbelievaboatAPI.getBalance(guildId, userId);
-                
-                if (balance.error) {
-                    await interaction.editReply({
-                        content: 'Unable to fetch balance information at this time. Please try again later.',
-                        ephemeral: true
-                    });
-                    return;
+
+                const guildId = interaction.guild?.id;
+                if (!guildId) return;
+
+                const bal = await unbelievaboatAPI.getBalance(guildId, userId);
+
+                if (bal?.error) {
+                    return interaction.editReply('Failed to get balance.');
                 }
 
-                const balanceEmbed = new EmbedBuilder()
+                const embed = new EmbedBuilder()
                     .setColor('#77DD77')
-                    .setTitle('Balance Information')
+                    .setTitle('Balance')
                     .addFields(
-                        { 
-                            name: 'Wallet', 
-                            value: `$${balance.wallet.toLocaleString()}`, 
-                            inline: true 
-                        },
-                        { 
-                            name: 'Bank', 
-                            value: `$${balance.bank.toLocaleString()}`, 
-                            inline: true 
-                        },
-                        {
-                            name: 'Total',
-                            value: `$${balance.total.toLocaleString()}`,
-                            inline: true
-                        }
-                    )
-                    .setTimestamp();
+                        { name: 'Wallet', value: `$${bal.wallet}` },
+                        { name: 'Bank', value: `$${bal.bank}` },
+                        { name: 'Total', value: `$${bal.total}` }
+                    );
 
-                await interaction.editReply({
-                    embeds: [balanceEmbed],
+                return interaction.editReply({ embeds: [embed] });
+            }
+
+            if (id.startsWith('show_registrations_')) {
+                const data = await loadUser(userId, 'vehicles');
+                const pages = Math.ceil(data.length / 4);
+
+                return interaction.reply({
+                    embeds: vehicleEmbeds(data, 0),
+                    components: pages > 1 ? [pagination(userId, 0, pages, 'registration')] : [],
                     ephemeral: true
                 });
-                return;
             }
 
-            console.log(`Processing button interaction for user ${userId}`);
+            if (id.startsWith('show_tickets_')) {
+                const data = await loadUser(userId, 'tickets');
+                const pages = Math.ceil(data.length / 4);
 
-            if (userDataCache.tickets.has(userId)) userDataCache.tickets.delete(userId);
-            if (userDataCache.vehicles.has(userId)) userDataCache.vehicles.delete(userId);
-
-            if (interaction.customId.startsWith('show_')) {
-                if (interaction.customId.startsWith('show_registrations_')) {
-                    const vehicleData = await loadUserData(userId, 'vehicles');
-                    const itemsPerPage = 4; 
-                    const totalPages = Math.ceil(vehicleData.length / itemsPerPage);
-                    await interaction.reply({
-                        embeds: await createVehicleEmbed(vehicleData, 0),
-                        components: totalPages > 1 ? [createPaginationButtons(userId, 0, totalPages, 'registration')] : [],
-                        ephemeral: true
-                    });
-                } 
-                else if (interaction.customId.startsWith('show_tickets_')) {
-                    console.log('Loading tickets for display');
-                    const tickets = await loadUserData(userId, 'tickets');
-                    console.log(`Found ${tickets.length} tickets`);
-                    
-                    const itemsPerPage = 4;
-                    const totalPages = Math.ceil(tickets.length / itemsPerPage);
-                    const components = [];
-                    const paginationRow = createPaginationButtons(userId, 0, totalPages, 'ticket');
-                    if (paginationRow.components.length > 0) {
-                        components.push(paginationRow);
-                    }
-
-                    await interaction.reply({
-                        embeds: await createTicketEmbed(tickets, 0),
-                        components: components,
-                        ephemeral: true
-                    });
-                }
+                return interaction.reply({
+                    embeds: ticketEmbeds(data, 0),
+                    components: pages > 1 ? [pagination(userId, 0, pages, 'ticket')] : [],
+                    ephemeral: true
+                });
             }
-            else if (interaction.customId.includes('_registration_') || interaction.customId.includes('_ticket_')) {
+
+            if (id.includes('_registration_') || id.includes('_ticket_')) {
+                const page = parseInt(parts[3]);
+                const next = id.startsWith('next');
+                const newPage = next ? page + 1 : page - 1;
+
                 await interaction.deferUpdate();
-                const currentPage = parseInt(parts[3]);
-                const isNext = interaction.customId.startsWith('next');
-                const newPage = isNext ? currentPage + 1 : currentPage - 1;
 
-                if (interaction.customId.includes('_registration_')) {
-                    const vehicleData = await loadUserData(userId, 'vehicles');
-                    const itemsPerPage = 4;
-                    const totalPages = Math.ceil(vehicleData.length / itemsPerPage);
-                    
-                    await interaction.editReply({
-                        embeds: await createVehicleEmbed(vehicleData, newPage),
-                        components: [createPaginationButtons(
-                            userId,
-                            newPage,
-                            totalPages,
-                            'registration'
-                        )]
-                    });
-                } else if (interaction.customId.includes('_ticket_')) {
-                    const tickets = await loadUserData(userId, 'tickets');
-                    const itemsPerPage = 4;
-                    const totalPages = Math.ceil(tickets.length / itemsPerPage);
-                    
-                    await interaction.editReply({
-                        embeds: await createTicketEmbed(tickets, newPage),
-                        components: [createPaginationButtons(userId, newPage, totalPages, 'ticket')]
+                if (id.includes('_registration_')) {
+                    const data = await loadUser(userId, 'vehicles');
+
+                    return interaction.editReply({
+                        embeds: vehicleEmbeds(data, newPage),
+                        components: [
+                            pagination(userId, newPage, Math.ceil(data.length / 4), 'registration')
+                        ]
                     });
                 }
-            }
-        } catch (error) {
-            console.error('Error handling button interaction:', error);
-            const errorMessage = 'An error occurred while processing your request.';
-            
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({
-                    content: errorMessage,
-                    ephemeral: true
+
+                const data = await loadUser(userId, 'tickets');
+
+                return interaction.editReply({
+                    embeds: ticketEmbeds(data, newPage),
+                    components: [
+                        pagination(userId, newPage, Math.ceil(data.length / 4), 'ticket')
+                    ]
                 });
-            } else {
-                await interaction.followUp({
-                    content: errorMessage,
+            }
+
+        } catch (err) {
+            console.log('interaction error:', err.message);
+
+            if (!interaction.replied) {
+                interaction.reply({
+                    content: 'An error occurred while processing this interaction.',
                     ephemeral: true
                 });
             }
         }
     }
 };
-
-async function createVehicleEmbed(vehicleData, page) {
-    const itemsPerPage = 4;
-    const totalPages = Math.ceil(vehicleData.length / itemsPerPage);
-    
-    if (vehicleData.length === 0) {
-        return [createEmbed(null, 'No vehicle have been registered by this user. If you would like to register a vehicle, please use the </register:1360700061759049789> command.')];
-    }
-
-    const pageVehicles = vehicleData.slice(page * itemsPerPage, (page * itemsPerPage) + itemsPerPage);
-    
-    const embeds = pageVehicles.map((v, index) => {
-        return new EmbedBuilder()
-            .setColor('#77DD77')
-            .setTitle(`Vehicle Registration #${(page * itemsPerPage) + index + 1}`)
-            .setDescription(`**Vehicle:** ${v.year} ${v.make} ${v.model}\n**Vehicle Color:** ${v.color}\n**Number Plate:** ${v.numberPlate}`)
-            .setFooter({ text: `Page ${page + 1}/${totalPages}` });
-    });
-
-    return embeds;
-}
-
-async function createTicketEmbed(tickets = [], page = 0) {
-    console.log('Creating ticket embed with:', {
-        ticketsLength: tickets.length,
-        page: page
-    });
-
-    const itemsPerPage = 4;
-    const totalPages = Math.ceil((Array.isArray(tickets) ? tickets.length : 0) / itemsPerPage);
-    
-    if (!Array.isArray(tickets)) {
-        console.error('Invalid tickets data:', tickets);
-        return [createEmbed(null, 'Error loading tickets.')];
-    }
-    
-    if (tickets.length === 0) {
-        console.log('No tickets found in data');
-        return [createEmbed(null, 'No tickets have been given to this user.')];
-    }
-    
-    const pageTickets = tickets.slice(page * itemsPerPage, (page * itemsPerPage) + itemsPerPage);
-    
-    console.log(`Displaying ${pageTickets.length} tickets for page ${page + 1}/${totalPages}`);
-    
-    const embeds = pageTickets.map((t, index) => {
-        const date = new Date(t.date).toLocaleString();
-        const numericPrice = Number(t.price);
-        const formattedPrice = `$${numericPrice.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        })}`;
-        
-        console.log('Ticket data:', {
-            ticketNumber: index + 1,
-            issuedBy: t.issuedBy,
-            offense: t.offense,
-            price: t.price
-        });
-
-        return new EmbedBuilder()
-            .setColor('#77DD77')
-            .setTitle(`Ticket #${(page * itemsPerPage) + index + 1}`)
-            .addFields(
-                { name: 'Offense', value: t.offense },
-                { name: 'Fine', value: formattedPrice },
-                { name: 'Issued', value: date },
-                { name: 'Issued By', value: t.issuedBy ? `<@${t.issuedBy}>` : 'Unknown' }
-            )
-            .setFooter({ text: `Page ${page + 1}/${totalPages}` });
-    });
-
-    return embeds;
-}
-
-async function handleInteractionReply(interaction, replyOptions) {
-    try {
-        if (!interaction.replied) {
-            await interaction.reply(replyOptions);
-        }
-    } catch (error) {
-        if (error.code !== 10062) {
-            console.error('Error in handleInteractionReply:', error);
-        }
-    }
-}
-
-async function handleInteractionUpdate(interaction, updateOptions) {
-    try {
-        if (!interaction.replied) {
-            await interaction.update(updateOptions);
-        }
-    } catch (error) {
-        if (error.code !== 10062) {
-            console.error('Error in handleInteractionUpdate:', error);
-        }
-    }
-}
-
-async function handleInteractionError(interaction) {
-    try {
-        if (!interaction.deferred) {
-            await interaction.deferReply({ ephemeral: true });
-        }
-        await interaction.editReply({ 
-            content: 'An error occurred while processing your request.',
-            ephemeral: true 
-        });
-    } catch (error) {
-        console.error('Error in handleInteractionError:', error);
-    }
-}
-

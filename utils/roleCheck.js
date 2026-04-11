@@ -1,43 +1,35 @@
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
 
 const fs = require('fs');
 const path = require('path');
 
-/** 
-
- * @param {string} 
- * @param {string} 
- * @returns {boolean|Object}
-*/
+/**
+ * Gets role config for a guild
+ * @param {string} guildId
+ * @param {string|null} roleType
+ * @returns {Object|boolean}
+ */
 function getRoleConfig(guildId, roleType = null) {
     try {
-        const dataFilePath = path.join(process.cwd(), 'data', 'roles', `${guildId}.json`);
-        
-       
-        if (!fs.existsSync(dataFilePath)) {
+        const filePath = path.join(process.cwd(), 'data', 'roles', `${guildId}.json`);
+        if (!fs.existsSync(filePath)) {
             return false;
         }
-        
-      
-        const fileContent = fs.readFileSync(dataFilePath, 'utf8');
-        const roleData = JSON.parse(fileContent);
-        
-       
+
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const config = JSON.parse(raw);
         if (roleType) {
-            return roleData[roleType] ? roleData[roleType] : false;
+            return config[roleType] ?? false;
         }
-        
-   
-        return roleData;
-    } catch (error) {
-        console.error(`Error checking role configuration for guild ${guildId}:`, error);
+
+        return config;
+    } catch (err) {
+        console.error(`Failed to load role config for guild ${guildId}:`, err);
         return false;
     }
 }
 
 module.exports = { getRoleConfig };
-

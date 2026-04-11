@@ -1,10 +1,7 @@
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
-
-
 
 const { Events } = require('discord.js');
 const fs = require('fs');
@@ -14,87 +11,76 @@ const DATA_PATH = path.join(__dirname, '../data/reinvites.json');
 const STARTUP_FILE = path.join(__dirname, '../data/startup.json');
 
 function loadReinvitesLink() {
-    try {
-        if (fs.existsSync(DATA_PATH)) {
-            const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
-            global.reinviteLink = data.link;
-        }
-    } catch (error) {
-        console.error('Error loading reinvites link:', error);
-    }
+  try {
+    if (!fs.existsSync(DATA_PATH)) return null;
+
+    const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
+    return data?.link || null;
+  } catch (err) {
+    console.error('Failed to load reinvites link:', err);
+    return null;
+  }
 }
 
-function saveReinvitesLink(link) {
-    try {
-        const dir = path.dirname(DATA_PATH);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.writeFileSync(DATA_PATH, JSON.stringify({ link }, null, 2));
-        global.reinviteLink = link;
-    } catch (error) {
-        console.error('Error saving reinvites link:', error);
-    }
+function loadStartupMessageId() {
+  try {
+    if (!fs.existsSync(STARTUP_FILE)) return null;
+
+    const data = JSON.parse(fs.readFileSync(STARTUP_FILE, 'utf8'));
+    return data?.messageId || null;
+  } catch (err) {
+    console.error('Failed to load startup file:', err);
+    return null;
+  }
 }
 
-loadReinvitesLink();
+async function userReactedWithCheck(message, userId) {
+  const reaction = message.reactions.cache.get('✅');
+  if (!reaction) return false;
+
+  const users = await reaction.users.fetch();
+  return users.has(userId);
+}
 
 module.exports = {
-    name: Events.InteractionCreate,
-    async execute(interaction) {
-        if (!interaction.isButton()) return;
-        if (interaction.customId !== 'reinvites_link') return;
+  name: Events.InteractionCreate,
 
-        try {
-            try {
-                const startupData = JSON.parse(fs.readFileSync(STARTUP_FILE, 'utf-8'));
-                const startupMessage = await interaction.channel.messages.fetch(startupData.messageId);
-                
-                const reaction = startupMessage.reactions.cache.get('✅');
-                if (!reaction) {
-                    return await interaction.reply({
-                        content: `Please react to the startup message to have access to the reinvites link. React [here](${startupMessage.url}).`,
-                        ephemeral: true
-                    });
-                }
+  async execute(interaction) {
+    if (!interaction.isButton()) return;
+    if (interaction.customId !== 'reinvites_link') return;
 
-                const userReacted = await reaction.users.fetch().then(users => users.has(interaction.user.id));
-                if (!userReacted) {
-                    return await interaction.reply({
-                        content: `Please react to the startup message to have access to the reinvites link. React [here](${startupMessage.url}).`,
-                        ephemeral: true
-                    });
-                }
+    await interaction.deferReply({ ephemeral: true });
 
-                if (!global.reinviteLink) {
-                    return await interaction.reply({ 
-                        content: 'No re-invites link has been set yet.',
-                        ephemeral: true
-                    });
-                }
+    try {
+      const link = loadReinvitesLink();
 
-                await interaction.reply({ 
-                    content: `**Re-invites Link:** ${global.reinviteLink}`,
-                    ephemeral: true
-                });
+      if (!link) {
+        return interaction.editReply('No re-invites link has been set yet.');
+      }
 
-            } catch (error) {
-                console.error('Error checking startup reaction:', error);
-                await interaction.reply({
-                    content: 'Please wait for the host to post the startup message.',
-                    ephemeral: true
-                });
-            }
-        } catch (error) {
-            console.error('Error in reinvites button handler:', error);
-            try {
-                await interaction.reply({
-                    content: 'An error occurred while processing your request.',
-                    ephemeral: true
-                });
-            } catch (e) {
-                console.error('Error sending error message:', e);
-            }
-        }
+      const messageId = loadStartupMessageId();
+
+      if (!messageId) {
+        return interaction.editReply('Startup message not found yet.');
+      }
+
+      const message = await interaction.channel.messages.fetch(messageId);
+
+      const reacted = await userReactedWithCheck(message, interaction.user.id);
+
+      if (!reacted) {
+        return interaction.editReply(
+          `You need to react to the startup message first: ${message.url}`
+        );
+      }
+
+      return interaction.editReply(`**Re-invites Link:** ${link}`);
+    } catch (err) {
+      console.error('Reinvites handler error:', err);
+
+      return interaction.editReply(
+        'An error occurred. The startup message might not be available yet.'
+      ).catch(() => {});
     }
-}
+  }
+};

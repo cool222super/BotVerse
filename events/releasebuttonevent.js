@@ -1,90 +1,82 @@
-
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
-
-
-
 
 const { Events } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const { MongoClient } = require('mongodb');
+
 const startupFile = path.join(__dirname, '../data/startup.json');
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME || 'sfrr';
 
+async function getStartupData() {
+  const fallback = JSON.parse(fs.readFileSync(startupFile, 'utf8'));
+
+  if (!MONGODB_URI) return fallback;
+
+  const client = new MongoClient(MONGODB_URI);
+
+  try {
+    await client.connect();
+
+    const db = client.db(DB_NAME);
+    const collection = db.collection('startup');
+
+    const data = await collection.findOne({ type: 'startup' });
+
+    return data || fallback;
+  } catch (err) {
+    console.error('MongoDB error, falling back to file:', err);
+    return fallback;
+  } finally {
+    await client.close().catch(() => {});
+  }
+}
+
 module.exports = {
   name: Events.InteractionCreate,
+
   async execute(interaction) {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('session_link_')) return;
 
+    await interaction.deferReply({ ephemeral: true });
+
     try {
-      await interaction.deferReply({ ephemeral: true });
+      const startupData = await getStartupData();
 
+      const msg = await interaction.channel.messages.fetch(startupData.messageId);
 
-      try {
-        let startupData;
-        if (MONGODB_URI) {
-          const client = new MongoClient(MONGODB_URI);
-          try {
-            await client.connect();
-            const db = client.db(DB_NAME);
-            const collection = db.collection('startup');
-            
-            startupData = await collection.findOne({ type: 'startup' });
-            await client.close();
-          } catch (mongoError) {
-            console.error('MongoDB Error:', mongoError);
-            startupData = JSON.parse(fs.readFileSync(startupFile, 'utf-8'));
-          }
-        } else {
-         
-          startupData = JSON.parse(fs.readFileSync(startupFile, 'utf-8'));
-        }
-        const startupMessage = await interaction.channel.messages.fetch(startupData.messageId);
-        
-        const reaction = startupMessage.reactions.cache.get('✅');
-        if (!reaction) {
-          await interaction.editReply({
-            content: `Please react to the startup message to have access to the session link. React [here](${startupMessage.url}).`
-          });
-          return;
-        }
+      const reaction = msg.reactions.cache.get('✅');
 
-        const userReacted = await reaction.users.fetch().then(users => users.has(interaction.user.id));
-        if (!userReacted) {
-          await interaction.editReply({
-            content: `Please react to the startup message to have access to the session link. React [here](${startupMessage.url}).`
-          });
-          return;
-        }
-
-        const link = interaction.customId.replace('session_link_', '');
-        await interaction.editReply({
-          content: `**Session Link:** ${link}`
-        });
-
-      } catch (error) {
-        console.error('Error checking startup reaction:', error);
-        await interaction.editReply({
-          content: 'Please wait for the host to post the startup message.'
-        });
+      if (!reaction) {
+        return interaction.editReply(
+          `You need to react to the startup message first: ${msg.url}`
+        );
       }
 
-    } catch (error) {
-      console.error('Error in session link button handler:', error);
-      try {
-        await interaction.editReply({
-          content: 'An error occurred while processing your request. Please try again later.'
-        });
-      } catch (e) {
-        console.error('Failed to send error message:', e);
+      const users = await reaction.users.fetch();
+      const hasReacted = users.has(interaction.user.id);
+
+      if (!hasReacted) {
+        return interaction.editReply(
+          `You need to react to the startup message first: ${msg.url}`
+        );
       }
+
+      const link = interaction.customId.replace('session_link_', '');
+
+      return interaction.editReply(`**Session Link:** ${link}`);
+    } catch (err) {
+      console.error('Session link handler error:', err);
+
+      return interaction.editReply(
+        'An error occurred. The startup message might not be available yet.'
+      ).catch(() => {});
     }
-  }
+  },
 };

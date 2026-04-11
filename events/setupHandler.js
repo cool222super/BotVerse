@@ -1,4 +1,3 @@
-
 // Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
 
 // Made by Supercoolsbro :D
@@ -9,73 +8,50 @@ const setupCommand = require('../commands/utility/setup');
 
 module.exports = {
     name: Events.InteractionCreate,
+
     async execute(interaction) {
         try {
-         
-            if (!(
-                (interaction.isStringSelectMenu() && interaction.customId === 'setup_select') ||
-                (interaction.isModalSubmit() && interaction.customId.startsWith('setup_modal_'))
-            )) {
-                return;
+            const isSetupSelect =
+                interaction.isStringSelectMenu() &&
+                interaction.customId === 'setup_select';
+
+            const isSetupModal =
+                interaction.isModalSubmit() &&
+                interaction.customId.startsWith('setup_modal_');
+
+            if (!isSetupSelect && !isSetupModal) return;
+            if (!interaction.isRepliable()) return;
+
+            if (isSetupSelect) {
+                try {
+                    await setupCommand.handleSetupSelect(interaction);
+                } catch (err) {
+                    if (err?.code === 10062) return;
+                    if (err?.code === 10064) return;
+                    console.log('There was an error in the setup select:', err);
+                }
             }
 
-        
-            if (!interaction.isRepliable()) {
-                console.log('Interaction is no longer repliable, ignoring.');
-                return;
+            if (isSetupModal) {
+                try {
+                    await setupCommand.handleModalSubmit(interaction);
+                } catch (err) {
+                    if (err?.code === 10062) return;
+                    if (err?.code === 10064) return;
+                    console.log('There was an error in the setup modal:', err);
+                }
             }
 
-          
-            if (interaction.isStringSelectMenu() && interaction.customId === 'setup_select') {
-                await setupCommand.handleSetupSelect(interaction).catch(error => {
-                  
-                    if (error.code === 10062) { 
-                        console.log('Interaction expired, ignoring.');
-                        return;
-                    }
-                    if (error.code === 10064) { 
-                        console.log('Message no longer exists, ignoring.');
-                        return;
-                    }
-                    console.error('Error handling setup select menu:', error);
-                });
-            }
+        } catch (err) {
+            console.log('The setup handler has crashed:', err);
 
-           
-            if (interaction.isModalSubmit() && interaction.customId.startsWith('setup_modal_')) {
-                await setupCommand.handleModalSubmit(interaction).catch(error => {
-                    
-                    if (error.code === 10062) { 
-                        console.log('Interaction expired, ignoring.');
-                        return;
-                    }
-                    if (error.code === 10064) { 
-                        console.log('Message no longer exists, ignoring.');
-                        return;
-                    }
-                    console.error('Error handling setup modal submit:', error);
-                });
-            }
-        } catch (error) {
-           
-            if (error.code === 10062 || error.code === 10064) {
-                console.log(`Ignored error ${error.code}`);
-                return;
-            }
-
-            console.error('Error in setup handler:', error);
-            
-           
-            if (!interaction.replied && interaction.isRepliable()) {
+            if (interaction.isRepliable() && !interaction.replied) {
                 try {
                     await interaction.reply({
-                        content: 'There was an error processing your request. Please try again.',
-                        ephemeral: true
-                    }).catch(() => {});
-                } catch (err) {
-                    
-                    console.error('Failed to send error message:', err);
-                }
+                        content: 'An error occurred while processing this interaction.',
+                        ephemeral: true,
+                    });
+                } catch {}
             }
         }
     },

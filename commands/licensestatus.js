@@ -1,17 +1,12 @@
-
-
-
-// Before you use this code please know that this code is old and might have errors in it and I do not expect people saying that this code is great and all. But I understand!
-
-// This command is also not finished!
+// Before you use this code please know that this code is old and might have errors in it.
+// I don’t guarantee it’s perfect, but it should work fine.
 
 // Made by Supercoolsbro :D
-
-
 
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
+const { getRoleConfig } = require('../../utils/roleCheck');
 
 const licensesDirPath = path.join(__dirname, '../../data/licenses');
 
@@ -36,59 +31,81 @@ module.exports = {
 
     async execute(interaction) {
         try {
-            const staffRoleId = '1279932257972260926';
-            if (!interaction.member.roles.cache.has(staffRoleId)) {
-                return await interaction.reply({
-                    content: 'You do not have permission to use this command.',
+            if (!interaction.guild) {
+                return interaction.reply({
+                    content: 'This command only works in servers.',
                     ephemeral: true
                 });
             }
 
-            const selectedUser = interaction.options.getUser('user');
-            const newStatus = interaction.options.getString('status');
-            const userId = selectedUser.id;
+            const roleConfig = getRoleConfig(interaction.guild.id);
+
+            if (!roleConfig?.leo?.role1) {
+                return interaction.reply({
+                    content: 'LEO role is not set yet. Please run /roleset first.',
+                    ephemeral: true
+                });
+            }
+
+            const leoRole = roleConfig.leo.role1;
+
+            if (!interaction.member.roles.cache.has(leoRole)) {
+                return interaction.reply({
+                    content: 'You need the LEO role to use this command.',
+                    ephemeral: true
+                });
+            }
+
+            const user = interaction.options.getUser('user');
+            const status = interaction.options.getString('status');
 
             if (!fs.existsSync(licensesDirPath)) {
                 fs.mkdirSync(licensesDirPath, { recursive: true });
             }
 
-            const licenseFilePath = path.join(licensesDirPath, `${userId}.json`);
-            
+            const filePath = path.join(licensesDirPath, `${user.id}.json`);
+
             let licenses = [];
-            if (fs.existsSync(licenseFilePath)) {
-                licenses = JSON.parse(fs.readFileSync(licenseFilePath, 'utf8'));
+
+            if (fs.existsSync(filePath)) {
+                try {
+                    licenses = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                } catch (e) {
+                    console.log('There was a broken license file the bot will reset it:', e);
+                    licenses = [];
+                }
             }
 
-            const newLicense = {
-                status: newStatus,
+            licenses.push({
+                status,
                 date: new Date().toISOString(),
                 updatedBy: interaction.user.tag
-            };
-            licenses.push(newLicense);
+            });
 
-            fs.writeFileSync(licenseFilePath, JSON.stringify(licenses, null, 2));
+            fs.writeFileSync(filePath, JSON.stringify(licenses, null, 2));
 
             const embed = new EmbedBuilder()
                 .setTitle('License Status Updated')
-                .setDescription(`
-                    **User:** ${selectedUser}
-                    **New Status:** ${newStatus}
-                    **Updated By:** ${interaction.user}
-                    **Date:** ${new Date().toLocaleString()}
-                `)
                 .setColor('#77DD77')
+                .setDescription(
+                    `**User:** ${user}\n` +
+                    `**Status:** ${status}\n` +
+                    `**Updated By:** ${interaction.user}\n` +
+                    `**Date:** ${new Date().toLocaleString()}`
+                )
                 .setTimestamp();
 
-            await interaction.reply({
-                embeds: [embed]
-            });
+            return interaction.reply({ embeds: [embed] });
 
-        } catch (error) {
-            console.error('Error in licensestatus command:', error);
-            await interaction.reply({
-                content: 'An error occurred while updating the license status.',
-                ephemeral: true
-            });
+        } catch (err) {
+            console.log('There was a licensestatus error:', err);
+
+            if (!interaction.replied) {
+                return interaction.reply({
+                    content: 'An error occurred while updating the license status.',
+                    ephemeral: true
+                });
+            }
         }
     }
 };
